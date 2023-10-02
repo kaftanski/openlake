@@ -17,7 +17,7 @@ conf = (
     .set("spark.sql.catalog.demo", "org.apache.iceberg.spark.SparkCatalog")
     .set("spark.sql.catalog.demo.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
     .set("spark.sql.catalog.demo.warehouse", "s3a://warehouse/")
-    .set("spark.sql.catalog.demo.s3.endpoint", "https://play.min.io:50000")
+    .set("spark.sql.catalog.demo.s3.endpoint", os.getenv("ENDPOINT", "play.min.io:50000"))
     .set("spark.sql.defaultCatalog", "demo") # Name of the Iceberg catalog
     .set("spark.sql.catalogImplementation", "in-memory")
     .set("spark.sql.catalog.demo.type", "hadoop") # Iceberg catalog type
