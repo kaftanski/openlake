@@ -36,11 +36,12 @@ def load_config(spark_context: SparkContext):
     spark_context._jsc.hadoopConfiguration().set("fs.s3a.secret.key",
                                                  os.getenv("AWS_SECRET_ACCESS_KEY", "openlakeuser"))
     spark_context._jsc.hadoopConfiguration().set("fs.s3a.endpoint", os.getenv("ENDPOINT", "play.min.io:50000"))
-    spark_context._jsc.hadoopConfiguration().set("fs.s3a.connection.ssl.enabled", "true")
+    spark_context._jsc.hadoopConfiguration().set("fs.s3a.connection.ssl.enabled", "false")
     spark_context._jsc.hadoopConfiguration().set("fs.s3a.path.style.access", "true")
     spark_context._jsc.hadoopConfiguration().set("fs.s3a.attempts.maximum", "1")
     spark_context._jsc.hadoopConfiguration().set("fs.s3a.connection.establish.timeout", "5000")
     spark_context._jsc.hadoopConfiguration().set("fs.s3a.connection.timeout", "10000")
+    spark_context._jsc.hadoopConfiguration().set("fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider")
 
 
 load_config(spark.sparkContext)
