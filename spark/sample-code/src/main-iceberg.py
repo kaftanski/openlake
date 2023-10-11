@@ -1,5 +1,6 @@
 import logging
 import os
+
 from pyspark import SparkConf
 from pyspark import SparkContext
 from pyspark.sql import SparkSession
@@ -18,11 +19,15 @@ conf = (
     .set("spark.sql.catalog.demo.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
     .set("spark.sql.catalog.demo.warehouse", "s3a://warehouse/")
     .set("spark.sql.catalog.demo.s3.endpoint", os.getenv("ENDPOINT", "play.min.io:50000"))
+    .set("spark.sql.catalog.demo.s3.endpoint.region", os.getenv("AWS_REGION", "us-east-1"))
     .set("spark.sql.defaultCatalog", "demo") # Name of the Iceberg catalog
     .set("spark.sql.catalogImplementation", "in-memory")
     .set("spark.sql.catalog.demo.type", "hadoop") # Iceberg catalog type
     .set("spark.executor.heartbeatInterval", "300000")
     .set("spark.network.timeout", "400000")
+    .set("spark.ssl.enabled", "true")
+    .set("spark.ssl.keyStore", os.path.join(os.getenv("JAVA_HOME"), "lib/security/cacerts"))
+    .set("spark.ssl.keyStorePassword", "changeit")
 )
 
 spark = SparkSession.builder.config(conf=conf).getOrCreate()
@@ -36,12 +41,12 @@ def load_config(spark_context: SparkContext):
     spark_context._jsc.hadoopConfiguration().set("fs.s3a.secret.key",
                                                  os.getenv("AWS_SECRET_ACCESS_KEY", "openlakeuser"))
     spark_context._jsc.hadoopConfiguration().set("fs.s3a.endpoint", os.getenv("ENDPOINT", "play.min.io:50000"))
+    spark_context._jsc.hadoopConfiguration().set("fs.s3a.endpoint.region", os.getenv("AWS_REGION", "us-east-1"))
     spark_context._jsc.hadoopConfiguration().set("fs.s3a.connection.ssl.enabled", "true")
     spark_context._jsc.hadoopConfiguration().set("fs.s3a.path.style.access", "true")
     spark_context._jsc.hadoopConfiguration().set("fs.s3a.attempts.maximum", "1")
     spark_context._jsc.hadoopConfiguration().set("fs.s3a.connection.establish.timeout", "5000")
     spark_context._jsc.hadoopConfiguration().set("fs.s3a.connection.timeout", "10000")
-    spark_context._jsc.hadoopConfiguration().set("fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider")
 
 
 load_config(spark.sparkContext)
@@ -66,12 +71,22 @@ schema = StructType([
     StructField('improvement_surcharge', DoubleType(), True),
     StructField('total_amount', DoubleType(), True)])
 
+logger.info("Environment Variables:")
+logger.info("INPUT_PATH: " + os.getenv("INPUT_PATH", 'not given'))
+logger.info("ENDPOINT: " + os.getenv("ENDPOINT", 'not given'))
+logger.info("AWS_REGION: " + os.getenv("AWS_REGION", 'not given'))
+logger.info("AWS_ACCESS_KEY_ID: " + os.getenv("AWS_ACCESS_KEY_ID", 'not given'))
+logger.info("AWS_SECRET_ACCESS_KEY: " + os.getenv("AWS_SECRET_ACCESS_KEY", 'not given'))
+
 # Read CSV file from MinIO
 df = spark.read.option("header", "true").schema(schema).csv(
     os.getenv("INPUT_PATH", "s3a://openlake/spark/sample-data/taxi-data.csv"))
+logger.info("read csv successfully")
+logger.info("columns: " + str(df.columns))
 
 # Create Iceberg table "nyc.taxis_large" from RDD
 df.write.mode("overwrite").saveAsTable("nyc.taxis_large")
+logger.info("created Iceberg table")
 
 # Query table row count
 count_df = spark.sql("SELECT COUNT(*) AS cnt FROM nyc.taxis_large")
